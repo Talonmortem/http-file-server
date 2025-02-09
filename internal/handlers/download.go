@@ -1,0 +1,103 @@
+package handlers
+
+import (
+	"archive/zip"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"github.com/gin-gonic/gin"
+)
+
+// DownloadFilesHandler создаёт ZIP-архив с выбранными файлами
+func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		username, exists := c.Get("username")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		var request struct {
+			Files []string `json:"files"`
+		}
+		if err := c.ShouldBindJSON(&request); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		if len(request.Files) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "No files selected"})
+			return
+		}
+
+		// Создаём временный файл для ZIP
+		zipFilePath := filepath.Join(os.TempDir(), fmt.Sprintf("files_%s.zip", username.(string)))
+		outFile, err := os.Create(zipFilePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create zip file"})
+			return
+		}
+		defer outFile.Close()
+
+		zipWriter := zip.NewWriter(outFile)
+
+		// Добавляем файлы в ZIP
+		for _, file := range request.Files {
+			// Проверяем, что путь безопасен
+			filePath := filepath.Join(uploadDir, username.(string), file)
+
+			// Убеждаемся, что файл существует
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("File %s not found", file)})
+				return
+			}
+
+			fileToZip, err := os.Open(filePath)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Cannot open file %s", file)})
+				return
+			}
+			defer fileToZip.Close()
+
+			// Создаём запись в ZIP с базовым именем файла
+			w, err := zipWriter.Create(filepath.Base(file))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Cannot add file %s to zip", file)})
+				return
+			}
+
+			_, err = io.Copy(w, fileToZip)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error copying file %s", file)})
+				return
+			}
+		}
+
+		// Закрываем ZIP перед отправкой
+		zipWriter.Close()
+
+		// Отправляем файл клиенту
+		c.FileAttachment(zipFilePath, "files.zip")
+	}
+}
+
+// DownloadOnClickHandler
+
+func DownloadOnClickHandler(uploadDir string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		fileName := c.Param("filename")
+
+		username, exists := c.Get("username")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		filePath := filepath.Join(uploadDir, username.(string), fileName)
+		c.File(filePath)
+
+	}
+}

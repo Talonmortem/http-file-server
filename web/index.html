@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Файловый сервер</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { margin-top: 20px; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin: 5px 0; }
+        label { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Файловый сервер</h1>
+
+    <h2>Загрузка файлов</h2>
+    <form id="uploadForm" onsubmit="uploadFiles(event)">
+        <input type="text" id="uploadPath" placeholder="Папка (например: docs/)" style="margin-bottom: 10px;">
+        <br>
+        <input type="file" id="fileInput" multiple required>
+        <button type="submit">Загрузить</button>
+    </form>
+    <p id="uploadStatus"></p>
+
+    <h2>Мои файлы</h2>
+        <button onclick="deleteFiles()">Удалить выбранные</button>
+        <button onclick="downloadFiles()">Скачать выбранные</button>
+    <ul id="myFiles"></ul>
+
+    <h2>Публичные файлы</h2>
+    <ul id="publicFiles"></ul>
+
+    <script>
+        async function fetchFiles() {
+            const response = await fetch('/files');
+            if (!response.ok) {
+                alert('Ошибка загрузки файлов');
+                return;
+            }
+
+            const data = await response.json();
+
+            const myFilesList = document.getElementById('myFiles');
+            const publicFilesList = document.getElementById('publicFiles');
+
+            myFilesList.innerHTML = '';
+            publicFilesList.innerHTML = '';
+
+            data.my_files.forEach(file => {
+                const li = document.createElement('li');
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = file;
+                li.appendChild(checkbox);
+                const link = document.createElement('a');
+                //link.href = `/download/${file}`;
+
+                //Download on click
+                link.addEventListener('click', () => {
+                    window.location.href = `/download/${file}`;
+                });
+                
+                
+                link.textContent = file;
+                li.appendChild(link);
+                myFilesList.appendChild(li);
+            });
+
+            data.public_files.forEach(file => {
+                const li = document.createElement('li');
+                const link = document.createElement('a');
+                link.href = `/download/${file}`;
+                link.textContent = file;
+                li.appendChild(link);
+                publicFilesList.appendChild(li);
+            });
+        }
+
+       /* function renderFileList(container, files, allowSelection) {
+            container.innerHTML = '';
+            files.forEach(file => {
+                const li = document.createElement('li');
+                if (allowSelection) {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = file;
+                    li.appendChild(checkbox);
+                }
+                const link = document.createElement('a');
+                link.href = `/download/${file}`;
+                link.textContent = file;
+                li.appendChild(link);
+                container.appendChild(li);
+            });
+        }
+            */
+
+        async function uploadFiles(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const uploadPath = document.getElementById('uploadPath').value;
+            const statusElement = document.getElementById('uploadStatus');
+
+            if (!fileInput.files.length) {
+                statusElement.textContent = 'Выберите файлы для загрузки';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('path', uploadPath);
+            
+            // Добавляем все выбранные файлы
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+
+            try {
+                statusElement.textContent = 'Загрузка...';
+                
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    statusElement.textContent = `Успешно загружено ${fileInput.files.length} файлов!`;
+                    fetchFiles();
+                } else {
+                    const error = await response.text();
+                    statusElement.textContent = `Ошибка: ${error}`;
+                }
+            } catch (error) {
+                statusElement.textContent = `Ошибка сети: ${error.message}`;
+            } finally {
+                // Очищаем поле выбора файлов после загрузки
+                fileInput.value = '';
+            }
+        }
+
+
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const uploadPath = document.getElementById('uploadPath').value;
+
+            if (!fileInput.files.length) {
+                alert('Выберите файл');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('path', uploadPath);
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                alert('Файл загружен!');
+                fetchFiles();
+            } else {
+                alert('Ошибка загрузки');
+            }
+        }
+
+
+        document.getElementById("uploadForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            let files = document.getElementById("fileInput").files;
+            if (files.length === 0) return;
+
+            let formData = new FormData();
+            for (let file of files) {
+                formData.append("files", file);
+            }
+
+            fetch("/upload", { method: "POST", body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("uploadStatus").innerText = data.message || "Ошибка загрузки";
+                })
+                .catch(() => document.getElementById("uploadStatus").innerText = "Ошибка загрузки");
+        });
+
+
+
+        async function deleteFiles() {
+            const checkboxes = document.querySelectorAll('#myFiles input[type="checkbox"]:checked');
+            const filesToDelete = Array.from(checkboxes).map(cb => cb.value);
+
+            if (filesToDelete.length === 0) {
+                alert('Выберите файлы для удаления');
+                return;
+            }
+
+            const response = await fetch('/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ files: filesToDelete })
+            });
+
+            if (response.ok) {
+                alert('Файлы удалены');
+                fetchFiles();
+            } else {
+                alert('Ошибка удаления файлов');
+            }
+        }
+
+        async function downloadFiles() {
+            const checkboxes = document.querySelectorAll('#myFiles input[type="checkbox"]:checked');
+            const filesToDownload = Array.from(checkboxes).map(cb => cb.value);
+
+            if (filesToDownload.length === 0) {
+                alert('Выберите файлы для скачивания');
+                return;
+            }
+
+            const response = await fetch('/download-zip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ files: filesToDownload })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "files.zip";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert('Ошибка скачивания файлов');
+            }
+        }
+
+        fetchFiles();
+    </script>
+</body>
+</html>
