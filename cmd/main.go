@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// making conveer
+
 func main() {
 	// Загружаем конфиг
 	cfg, err := config.LoadConfig("configs/config.yaml")
