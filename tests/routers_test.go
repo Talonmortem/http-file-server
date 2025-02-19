@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -109,31 +110,6 @@ func TestIndexHandlerWithAuth(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("Доступ к защищенному ресурсу с валидным токеном", func(t *testing.T) {
-		// Генерируем тестовый токен
-		token, err := middleware.GenerateToken("testuser", cfg)
-		require.NoError(t, err)
-
-		// Запрос к защищенному ресурсу
-		req, _ := http.NewRequest("GET", "/files", nil)
-		req.Header.Set("Authorization", "Bearer "+token)
-
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("Доступ с невалидным токеном", func(t *testing.T) {
-		req, _ := http.NewRequest("GET", "/", nil)
-		req.Header.Set("Authorization", "Bearer invalid-token")
-
-		w := httptest.NewRecorder()
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-	})
-
 	t.Run("Проверка с невалидным токеном", func(t *testing.T) {
 		// Конфиг для генерации НЕвалидного токена
 		invalidCfg := &config.Config{
@@ -164,6 +140,51 @@ func TestIndexHandlerWithAuth(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 	})
 
+	t.Run("Доступ к скачиванию файлов с валидным токеном", func(t *testing.T) {
+		// Генерируем тестовый токен
+		token, _ := middleware.GenerateToken("testuser", cfg)
+		request := struct {
+			Files []string `json:"files"`
+		}{
+			Files: []string{"file1.txt", "file2.txt"},
+		}
+
+		body, err := json.Marshal(request)
+		require.NoError(t, err)
+
+		// Запрос к защищенному ресурсу
+		req, _ := http.NewRequest("POST", "/download-zip", bytes.NewBuffer(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("Доступ к скачиванию файлов с невалидным токеном", func(t *testing.T) {
+
+		// Генерируем тестовый токен
+		token := "wrong-token"
+		request := struct {
+			Files []string `json:"files"`
+		}{
+			Files: []string{"file1.txt", "file2.txt"},
+		}
+
+		body, err := json.Marshal(request)
+		require.NoError(t, err)
+
+		// Запрос к защищенному ресурсу
+		req, _ := http.NewRequest("POST", "/download-zip", bytes.NewBuffer(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
 	t.Run("Проверка загрузки с токеном", func(t *testing.T) {
 		// Генерируем тестовый токен
 		token, err := middleware.GenerateToken("testuser", cfg)
@@ -186,7 +207,28 @@ func TestIndexHandlerWithAuth(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("Проверка редиректа на /login", func(t *testing.T) {
+	t.Run("Проверка загрузки с невалидным токеном", func(t *testing.T) {
+		// Генерируем тестовый токен
+		token := "wrong-token"
+		require.NoError(t, err)
+
+		// Создаем запрос с токеном
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		part, _ := writer.CreateFormFile("file", "test.txt")
+		part.Write([]byte("content"))
+		writer.Close()
+
+		req, _ := http.NewRequest("POST", "/upload", body)
+		req.Header.Set("Content-Type", writer.FormDataContentType())
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+	t.Run("Проверка редиректа", func(t *testing.T) {
 
 		testCases := []struct {
 			name         string
@@ -205,6 +247,20 @@ func TestIndexHandlerWithAuth(t *testing.T) {
 			{
 				name:         "Загрузка файлов без авторизации",
 				path:         "/upload",
+				method:       "POST",
+				expectedCode: http.StatusFound,
+				redirectPath: "/login",
+			},
+			{
+				name:         "Список файлов без авторизации",
+				path:         "/files",
+				method:       "GET",
+				expectedCode: http.StatusFound,
+				redirectPath: "/login",
+			},
+			{
+				name:         "Удаление файлов без авторизации",
+				path:         "/delete",
 				method:       "POST",
 				expectedCode: http.StatusFound,
 				redirectPath: "/login",

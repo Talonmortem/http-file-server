@@ -21,3 +21,42 @@ func ConnectDB(cfg *config.Config) error {
 	log.Println("✅ Подключение к SQLite успешно!")
 	return nil
 }
+
+func SaveNotes(request struct {
+	Path string `json:"path"`
+	Note string `json:"note"`
+}) error {
+
+	// insert into database replace on conflict
+	_, err := DB.Exec("INSERT INTO files (path, notes) VALUES ($1, $2) ON CONFLICT (path) DO UPDATE SET notes = $2", request.Path, request.Note)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetNotes(path string) string {
+	var notes string
+	err := DB.QueryRow("SELECT notes FROM files WHERE path = $1", path).Scan(&notes)
+	if err != nil {
+		return ""
+	}
+	return notes
+}
+
+func SaveUploadedFile(path string, username string) error {
+	_, err := DB.Exec("INSERT INTO files (path, owner) VALUES ($1, $2) ON CONFLICT (path) DO UPDATE SET owner = $2", path, username)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetOwner(path string) string {
+	var owner string
+	err := DB.QueryRow("SELECT owner FROM files WHERE path = $1", path).Scan(&owner)
+	if err != nil {
+		return ""
+	}
+	return owner
+}

@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,11 +15,17 @@ import (
 // DownloadFilesHandler создаёт ZIP-архив с выбранными файлами
 func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username := c.PostForm("username")
+		username, _ := c.Get("username")
+		if username == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
 
 		var request struct {
-			Files []string `json:"files"`
+			Files          []string `json:"files"`
+			CurrentDirName string   `json:"currentDirName"`
 		}
+
 		if err := c.ShouldBindJSON(&request); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
@@ -43,11 +50,12 @@ func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 		// Добавляем файлы в ZIP
 		for _, file := range request.Files {
 			// Проверяем, что путь безопасен
-			filePath := filepath.Join(uploadDir, username, file)
-
+			//filePath := filepath.Join(uploadDir, username.(string), file)
+			filePath := file
 			// Убеждаемся, что файл существует
 			if _, err := os.Stat(filePath); os.IsNotExist(err) {
 				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("File %s not found", file)})
+				log.Printf("File %s not found", file)
 				return
 			}
 
@@ -76,7 +84,9 @@ func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 		zipWriter.Close()
 
 		// Отправляем файл клиенту
-		c.FileAttachment(zipFilePath, "files.zip")
+		currentDirName := filepath.Base(request.CurrentDirName)
+		c.FileAttachment(zipFilePath, currentDirName+"_"+username.(string)+".zip")
+		log.Printf("✅ Архив %s отправлены пользователем %s", currentDirName+"_"+username.(string)+".zip", username.(string))
 	}
 }
 
@@ -85,11 +95,15 @@ func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 func DownloadOnClickHandler(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileName := c.Param("filename")
+		// Получаем имя пользователя из контекста
+		username, exists := c.Get("username")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
 
-		username := c.PostForm("username")
-
-		filePath := filepath.Join(uploadDir, username, fileName)
+		filePath := filepath.Join(uploadDir, username.(string), fileName)
+		log.Printf("Downloading file: %s", filePath)
 		c.File(filePath)
-
 	}
 }

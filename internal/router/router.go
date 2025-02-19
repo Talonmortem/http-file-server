@@ -25,12 +25,16 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	{
 		// Главная стараница
 		authGroup.GET("/", handlers.IndexHandler(cfg.Storage.WebDir))
+
+		authGroup.GET("/files", handlers.ListFilesHandler(cfg.Storage.UploadDir))
+
 		// register routes
 		authGroup.POST("/upload", handlers.UploadHandler(cfg.Storage.UploadDir))
 		authGroup.POST("/download-zip", handlers.DownloadFilesHandler(cfg.Storage.UploadDir))
-		authGroup.GET("/files", handlers.ListFilesHandler(cfg.Storage.UploadDir, cfg.Storage.PublicDir))
-		authGroup.POST("/delete", handlers.DeleteFilesHandler(cfg.Storage.UploadDir, cfg.Storage.PublicDir))
-		authGroup.POST("/download/:filename", handlers.DownloadOnClickHandler(cfg.Storage.UploadDir))
+		authGroup.POST("/delete", handlers.DeleteFilesHandler(cfg.Storage.UploadDir))
+		authGroup.GET("/download/:filename", handlers.DownloadOnClickHandler(cfg.Storage.UploadDir))
+		authGroup.POST("/save-note", handlers.SaveNoteHandler(cfg.Storage.UploadDir))
+		authGroup.POST("/create-folder", handlers.CreateFolderHandler(cfg.Storage.UploadDir))
 	}
 
 	return router

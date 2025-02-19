@@ -58,6 +58,8 @@ func LoginHandler(cfg *config.Config) gin.HandlerFunc {
 
 		log.Printf("Токен для пользователя %s: %s", username, token)
 
+		c.Set("username", username)
+
 		c.Redirect(http.StatusFound, "/")
 	}
 }
@@ -75,4 +77,10 @@ func LogoutHandler(c *gin.Context) {
 	)
 
 	c.Redirect(http.StatusFound, "/login")
+}
+
+func LoginFormHandler(c *gin.Context) {
+	c.HTML(http.StatusOK, "login.html", gin.H{
+		"error": c.Query("error"), // Для вывода ошибок
+	})
 }

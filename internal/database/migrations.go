@@ -15,5 +15,26 @@ func RunMigrations() {
 		log.Fatal("Ошибка миграции БД:", err)
 	}
 
-	log.Println("✅ Таблица users проверена/создана.")
+	/*
+		_, err = DB.Exec(`
+		DROP TABLE IF EXISTS files;
+		`)
+		if err != nil {
+			log.Fatal("Ошибка миграции БД:", err)
+		}
+	*/
+
+	query = `CREATE TABLE IF NOT EXISTS files (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		path TEXT,
+		notes TEXT,
+		owner TEXT,
+		UNIQUE(path)
+	);`
+	_, err = DB.Exec(query)
+	if err != nil {
+		log.Fatal("Ошибка миграции БД:", err)
+	}
+
+	log.Println("✅ Таблицы проверены/созданы.")
 }

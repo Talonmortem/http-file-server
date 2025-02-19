@@ -38,7 +38,8 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Не удалось запустить сервер: %v", err)
+	} else {
+		log.Printf("✅Сервер запущен на %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 	}
-	log.Printf("Сервер запущен на %s:%d\n", cfg.Server.Host, cfg.Server.Port)
 
 }
