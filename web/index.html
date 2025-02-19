@@ -6,7 +6,20 @@
     <title>Файловый менеджер</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; }
+        .header { 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logout-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }        table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f4f4f4; }
         .folder { font-weight: bold; cursor: pointer; }
@@ -15,7 +28,11 @@
     </style>
 </head>
 <body>
-    <h1>Файловый менеджер</h1>
+    <div class="header">
+        <h1>Файловый сервер</h1>
+        <button class="logout-btn" onclick="logout()">Выйти</button>
+    </div>
+    
     <button class="back-btn" onclick="goUp()">⬆ Назад</button>
     <button class="download-btn" onclick="downloadFiles()">⬇ Скачать выбранные</button>
     
@@ -179,6 +196,13 @@
                 body: JSON.stringify({ path: filePath, note: note })
             });
         }
+
+        function logout() {
+            fetch('/logout')
+                .then(() => window.location.href = '/login')
+                .catch(err => console.error('Ошибка выхода:', err));
+        }
+
         
         fetchFiles();
     </script>
