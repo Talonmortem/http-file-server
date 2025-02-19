@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Авторизация</title>
+    <style>
+        .container { max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 8px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Вход в систему</h2>
+        
+        {{ if .error }}
+            <div class="error">{{ .error }}</div>
+        {{ end }}
+
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label>Логин:</label>
+                <input type="text" name="username" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Пароль:</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <button type="submit">Войти</button>
+        </form>
+    </div>
+</body>
+</html>

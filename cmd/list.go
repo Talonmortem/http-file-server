@@ -11,7 +11,7 @@ import (
 
 //TODO: del user
 
-func main() {
+func listUsers() {
 	// Загружаем конфиг
 	cfg, err := config.LoadConfig("configs/config.yaml")
 	if err != nil {
@@ -27,16 +27,15 @@ func main() {
 
 	// Запрашиваем логин и пароль
 	if len(os.Args) < 2 {
-		fmt.Println("Использование: go run cmd/del_user.go <username>")
+		fmt.Println("Использование: go run cmd/list_users.go")
 		return
 	}
-	username := os.Args[1]
 
 	// Удаляем пользователя в БД
-	_, err = database.DB.Exec("DELETE FROM users WHERE username = ?", username)
+	users, err := database.DB.Exec("SELECT * FROM users")
 	if err != nil {
-		log.Fatal("Ошибка удаления пользователя:", err)
+		log.Fatal("Ошибка поиска пользователя:", err)
 	}
 
-	fmt.Println("✅ Пользователь удалён:", username)
+	fmt.Println("✅ Пользователи:", users)
 }

@@ -12,11 +12,7 @@ import (
 // UploadHandler обрабатывает загрузку файлов
 func UploadHandler(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username, exists := c.Get("username")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		username := c.PostForm("username")
 
 		// Читаем путь назначения из параметров запроса
 		targetPath := c.PostForm("path") // Например, "docs/"
@@ -31,7 +27,7 @@ func UploadHandler(uploadDir string) gin.HandlerFunc {
 
 		for _, file := range files {
 			// Создаем путь для сохраненея
-			filePath := filepath.Join(uploadDir, username.(string), targetPath, file.Filename)
+			filePath := filepath.Join(uploadDir, username, targetPath, file.Filename)
 
 			// Сохраняем файл
 			if err := c.SaveUploadedFile(file, filePath); err != nil {

@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Config struct {
+/*type Config struct {
 	Server struct {
 		Host string `yaml:"host"`
 		Port int    `yaml:"port"`
@@ -20,6 +20,38 @@ type Config struct {
 	Database struct {
 		Path string `yaml:"path"`
 	} `yaml:"database"`
+	JWT struct {
+		SecretKey string `yaml:"secret_key"`
+		ExpiresIn int    `yaml:"expires_in"`
+	}
+}*/
+
+type Config struct {
+	Server   Server
+	Storage  Storage
+	JWT      JWT
+	Database Database
+}
+
+type Server struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+}
+
+type Storage struct {
+	UploadDir   string `yaml:"upload_dir"`
+	PublicDir   string `yaml:"public_dir"`
+	TemplateDir string `yaml:"template_dir"`
+	WebDir      string `yaml:"web_dir"`
+}
+
+type JWT struct {
+	SecretKey string `yaml:"secret_key"`
+	ExpiresIn int    `yaml:"expires_in"`
+}
+
+type Database struct {
+	Path string `yaml:"path"`
 }
 
 // LoadConfig загружает конфигурацию из файла
@@ -39,6 +71,8 @@ func LoadConfig(path string) (*Config, error) {
 		log.Printf("Ошибка разбора YAML: %v", err)
 		return nil, err
 	}
+
+	log.Println("Config file loaded successfully", cfg)
 
 	return &cfg, nil
 }

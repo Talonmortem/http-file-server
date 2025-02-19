@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func main() {
+func addUser() {
 	// Загружаем конфиг
 	cfg, err := config.LoadConfig("configs/config.yaml")
 	if err != nil {

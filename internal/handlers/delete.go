@@ -11,11 +11,7 @@ import (
 // DeleteFilesHandler удаляет файлы
 func DeleteFilesHandler(uploadDir, publicDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username, exists := c.Get("username")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		username := c.PostForm("username")
 
 		var request struct {
 			Files []string `json:"files"`
@@ -26,7 +22,7 @@ func DeleteFilesHandler(uploadDir, publicDir string) gin.HandlerFunc {
 		}
 
 		for _, file := range request.Files {
-			filePath := filepath.Join(uploadDir, username.(string), file)
+			filePath := filepath.Join(uploadDir, username, file)
 			if err := os.Remove(filePath); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete " + file})
 				return

@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 )
 
 // IndexHandler раздаёт главную страницу
-func IndexHandler() gin.HandlerFunc {
+func IndexHandler(webDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.File("web/index.html")
+		log.Println("Главная страница!", webDir)
+		c.File(webDir + "/index.html")
 	}
 }

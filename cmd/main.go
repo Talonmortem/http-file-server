@@ -6,13 +6,9 @@ import (
 	"os"
 
 	"github.com/Talonmortem/http-file-server/internal/config"
-	"github.com/Talonmortem/http-file-server/internal/config/middleware"
 	"github.com/Talonmortem/http-file-server/internal/database"
-	"github.com/Talonmortem/http-file-server/internal/handlers"
-	"github.com/gin-gonic/gin"
+	"github.com/Talonmortem/http-file-server/internal/router"
 )
-
-// making conveer
 
 func main() {
 	// Загружаем конфиг
@@ -35,21 +31,7 @@ func main() {
 	database.RunMigrations()
 	log.Println("✅ База данных подключена.")
 
-	// Создаем экземпляр Gin
-	router := gin.Default()
-
-	// Включаем авторизацию
-	router.Use(middleware.AuthMiddleware())
-
-	// Главная стараница
-	router.GET("/", handlers.IndexHandler())
-
-	// register routes
-	router.POST("/upload", handlers.UploadHandler(cfg.Storage.UploadDir))
-	router.POST("/download-zip", handlers.DownloadFilesHandler(cfg.Storage.UploadDir))
-	router.GET("/files", handlers.ListFilesHandler(cfg.Storage.UploadDir, cfg.Storage.PublicDir))
-	router.POST("/delete", handlers.DeleteFilesHandler(cfg.Storage.UploadDir, cfg.Storage.PublicDir))
-	router.POST("/download/:filename", handlers.DownloadOnClickHandler(cfg.Storage.UploadDir))
+	router := router.SetupRouter(cfg)
 
 	// Запуск сервера
 

@@ -14,11 +14,7 @@ import (
 // DownloadFilesHandler создаёт ZIP-архив с выбранными файлами
 func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username, exists := c.Get("username")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		username := c.PostForm("username")
 
 		var request struct {
 			Files []string `json:"files"`
@@ -34,7 +30,7 @@ func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 		}
 
 		// Создаём временный файл для ZIP
-		zipFilePath := filepath.Join(os.TempDir(), fmt.Sprintf("files_%s.zip", username.(string)))
+		zipFilePath := filepath.Join(os.TempDir(), fmt.Sprintf("files_%s.zip", username))
 		outFile, err := os.Create(zipFilePath)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create zip file"})
@@ -47,7 +43,7 @@ func DownloadFilesHandler(uploadDir string) gin.HandlerFunc {
 		// Добавляем файлы в ZIP
 		for _, file := range request.Files {
 			// Проверяем, что путь безопасен
-			filePath := filepath.Join(uploadDir, username.(string), file)
+			filePath := filepath.Join(uploadDir, username, file)
 
 			// Убеждаемся, что файл существует
 			if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -90,13 +86,9 @@ func DownloadOnClickHandler(uploadDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileName := c.Param("filename")
 
-		username, exists := c.Get("username")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		username := c.PostForm("username")
 
-		filePath := filepath.Join(uploadDir, username.(string), fileName)
+		filePath := filepath.Join(uploadDir, username, fileName)
 		c.File(filePath)
 
 	}

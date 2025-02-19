@@ -12,13 +12,9 @@ import (
 // Обновленная функция ListFilesHandler
 func ListFilesHandler(uploadDir, publicDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		username, exists := c.Get("username")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
+		username := c.PostForm("username")
 
-		userDir := filepath.Join(uploadDir, username.(string))
+		userDir := filepath.Join(uploadDir, username)
 		// Создаем директорию, если она не существует
 		if err := os.MkdirAll(userDir, 0755); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user directory"})

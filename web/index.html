@@ -6,6 +6,20 @@
     <title>Файловый сервер</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .logout-btn {
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }        
         h2 { margin-top: 20px; }
         ul { list-style-type: none; padding: 0; }
         li { margin: 5px 0; }
@@ -13,7 +27,10 @@
     </style>
 </head>
 <body>
-    <h1>Файловый сервер</h1>
+    <div class="header">
+        <h1>Файловый сервер</h1>
+        <button class="logout-btn" onclick="logout()">Выход</button>
+    </div>
 
     <h2>Загрузка файлов</h2>
     <form id="uploadForm" onsubmit="uploadFiles(event)">
@@ -33,6 +50,13 @@
     <ul id="publicFiles"></ul>
 
     <script>
+
+        function logout() {
+            fetch('/logout')
+                .then(() => window.location.href = '/login')
+                .catch(err => console.error('Ошибка выхода:', err));
+        }
+
         async function fetchFiles() {
             const response = await fetch('/files');
             if (!response.ok) {
