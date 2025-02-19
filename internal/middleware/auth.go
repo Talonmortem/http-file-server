@@ -22,7 +22,8 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := extractToken(c)
 		if tokenString == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Требуется авторизация"})
+			c.Redirect(http.StatusFound, "/login") // Редирект при отсутствии токена
+			c.Abort()
 			return
 		}
 

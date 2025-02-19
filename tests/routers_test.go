@@ -185,4 +185,45 @@ func TestIndexHandlerWithAuth(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 	})
+
+	t.Run("Проверка редиректа на /login", func(t *testing.T) {
+
+		testCases := []struct {
+			name         string
+			path         string
+			method       string
+			expectedCode int
+			redirectPath string
+		}{
+			{
+				name:         "Главная без авторизации",
+				path:         "/",
+				method:       "GET",
+				expectedCode: http.StatusFound,
+				redirectPath: "/login",
+			},
+			{
+				name:         "Загрузка файлов без авторизации",
+				path:         "/upload",
+				method:       "POST",
+				expectedCode: http.StatusFound,
+				redirectPath: "/login",
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				req, _ := http.NewRequest(tc.method, tc.path, nil)
+				w := httptest.NewRecorder()
+
+				router.ServeHTTP(w, req)
+
+				assert.Equal(t, tc.expectedCode, w.Code)
+				if tc.redirectPath != "" {
+					location, _ := w.Result().Location()
+					assert.Equal(t, tc.redirectPath, location.Path)
+				}
+			})
+		}
+	})
 }
