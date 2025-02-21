@@ -1,12 +1,13 @@
 package handlers
 
 import (
+	"github.com/Talonmortem/http-file-server/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
 // IndexHandler раздаёт главную страницу
-func IndexHandler(webDir string) gin.HandlerFunc {
+func IndexHandler(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.File(webDir + "/index.html")
+		c.File(cfg.Storage.WebDir + "/index.html")
 	}
 }

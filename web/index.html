@@ -33,7 +33,7 @@
         <button class="logout-btn" onclick="logout()">Выйти</button>
     </div>
     
-    <button class="back-btn" onclick="goUp()">⬆ Назад</button>
+    <button class="back-btn" id="back-button" onclick="goUp()">⬆ Назад</button>
     <button class="download-btn" onclick="downloadFiles()">⬇ Скачать выбранные</button>
     
     <div id="drop-area" ondrop="handleDrop(event)" ondragover="event.preventDefault()">
@@ -72,34 +72,61 @@
     </table>
     <script>
         let currentPath = "";
+        let rootPath = "";
 
-        async function fetchFiles(path = 'uploads/') {
-            currentPath = path;
-
-            document.getElementById("current-dir-name").textContent = path || "/";
-            const response = await fetch(`/files?path=${encodeURIComponent(path)}`);
+        async function fetchConfig() {
+            const response = await fetch("/config");
             const data = await response.json();
-            
-            const fileList = document.getElementById("file-list");
-            fileList.innerHTML = "";
-            
-            data.files.forEach(file => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td><input type="checkbox" value="${file.path}"></td>
-                    <td class="${file.is_dir ? 'folder' : ''}" onclick="${file.is_dir ? `fetchFiles('${file.path}')` : ''}">
-                        ${file.is_dir ? '📁' : '📄'} ${file.name}
-                    </td>
-                    <td>${file.size}</td>
-                    <td>${file.modified}</td>
-                    <td contenteditable="true" onblur="saveNote('${file.path}', this.innerText)">${file.notes || ''}</td>
-                `;
-                fileList.appendChild(row);
-            });
+            rootPath = data.rootPath;
+            webDir = data.webDir;
+            console.log("Root path:", rootPath);
+            console.log("Web directory:", webDir);
+            fetchFiles(rootPath);
         }
+
+        async function fetchFiles(path = "") {
+            currentPath = path;
+            document.getElementById("current-dir-name").textContent = path || "/";
+            document.getElementById("back-button").style.display = (path === "" || path === rootPath) ? "none" : "inline-block";
+            
+            try {
+                const response = await fetch(`/files?path=${encodeURIComponent(path)}`);
+                if (!response.ok) {
+                    throw new Error(`Ошибка сервера: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+
+                if (!data.files || !Array.isArray(data.files)) {
+                    throw new Error("Некорректный формат ответа сервера");
+                }
+
+                const fileList = document.getElementById("file-list");
+                fileList.innerHTML = "";
+
+                data.files.forEach(file => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td><input type="checkbox" value="${file.path}"></td>
+                        <td class="${file.is_dir ? 'folder' : ''}" onclick="${file.is_dir ? `fetchFiles('${file.path}')` : ''}">
+                            ${file.is_dir ? '📁' : '📄'} ${file.name}
+                        </td>
+                        <td>${file.size}</td>
+                        <td>${file.modified}</td>
+                        <td contenteditable="true" onblur="saveNote('${file.path}', this.innerText)">${file.notes || ''}</td>
+                    `;
+                    fileList.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Ошибка загрузки файлов:", error);
+                alert("Не удалось загрузить файлы. Проверьте соединение с сервером.");
+            }
+        }
+
         
         function goUp() {
-            if (!currentPath) return;
+            if (!currentPath || currentPath === rootPath) return;
+
             const parentPath = currentPath.split("/").slice(0, -1).join("/");
             fetchFiles(parentPath)
         }
@@ -203,8 +230,8 @@
                 .catch(err => console.error('Ошибка выхода:', err));
         }
 
-        
-        fetchFiles();
+        fetchConfig();
+        //fetchFiles();
     </script>
 </body>
 </html>

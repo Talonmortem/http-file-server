@@ -24,8 +24,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	authGroup.Use(middleware.AuthMiddleware(cfg))
 	{
 		// Главная стараница
-		authGroup.GET("/", handlers.IndexHandler(cfg.Storage.WebDir))
-
+		authGroup.GET("/", handlers.IndexHandler(cfg))
+		authGroup.GET("/config", handlers.ConfigHandler(cfg))
 		authGroup.GET("/files", handlers.ListFilesHandler(cfg.Storage.UploadDir))
 
 		// register routes
