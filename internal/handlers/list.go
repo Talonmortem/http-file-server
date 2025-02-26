@@ -39,6 +39,20 @@ func ListFilesHandler(rootDir string) gin.HandlerFunc {
 		}
 
 		var fileList []FileInfo
+
+		log.Println("path: ", path, "rootDir: ", rootDir)
+		if path != rootDir[2:] {
+			fileList = append(fileList, FileInfo{
+				Name:     "..",
+				Path:     filepath.Dir(path),
+				Size:     " ",
+				Modified: " ",
+				IsDir:    true,
+				Notes:    database.GetNotes(filepath.Dir(path)),
+				Owner:    database.GetOwner(filepath.Dir(path)),
+			})
+		}
+
 		for _, file := range files {
 			info, _ := file.Info()
 			size := " "

@@ -25,6 +25,21 @@
         .folder { font-weight: bold; cursor: pointer; }
         .back-btn, .download-btn { margin-bottom: 10px; }
         #drop-area { border: 2px dashed #ccc; padding: 20px; text-align: center; margin-bottom: 20px; }
+
+        #drag-indicator {
+            position: absolute;
+            display: none;
+            background: rgba(0, 0, 0, 0.75);
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            font-size: 16px;
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            line-height: 40px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -70,67 +85,106 @@
         </thead>
         <tbody id="file-list"></tbody>
     </table>
+
+    <div id="drag-indicator">📂</div>
+
     <script>
         let currentPath = "";
         let rootPath = "";
+        let selectedFiles = [];
+        const dragIndicator = document.getElementById("drag-indicator");
 
         async function fetchConfig() {
-            const response = await fetch("/config");
-            const data = await response.json();
-            rootPath = data.rootPath;
-            webDir = data.webDir;
-            console.log("Root path:", rootPath);
-            console.log("Web directory:", webDir);
-            fetchFiles(rootPath);
+            try {
+                const response = await fetch("/config");
+                if (!response.ok) throw new Error("Ошибка загрузки конфигурации");
+                const data = await response.json();
+                rootPath = data.rootPath;
+                fetchFiles(rootPath);
+            } catch (error) {
+                console.error("Ошибка загрузки конфигурации:", error);
+                alert("Не удалось загрузить конфигурацию сервера.");
+            }
         }
 
         async function fetchFiles(path = "") {
+            selectedFiles = [];
             currentPath = path;
             document.getElementById("current-dir-name").textContent = path || "/";
             document.getElementById("back-button").style.display = (path === "" || path === rootPath) ? "none" : "inline-block";
             
-            try {
-                const response = await fetch(`/files?path=${encodeURIComponent(path)}`);
-                if (!response.ok) {
-                    throw new Error(`Ошибка сервера: ${response.statusText}`);
-                }
+            const response = await fetch(`/files?path=${encodeURIComponent(path)}`);
+            const data = await response.json();
+            
+            const fileList = document.getElementById("file-list");
+            fileList.innerHTML = "";
+            
+            data.files.forEach(file => {
+                const row = document.createElement("tr");
+                row.draggable = true;
+                row.ondragstart = (event) => dragStart(event, file.path);
+                row.ondragover = file.is_dir ? (event) => event.preventDefault() : null;
+                row.ondrop = file.is_dir ? (event) => dropFiles(event, file.path) : null;
                 
-                const data = await response.json();
+                row.innerHTML = `
+                    <td><input type="checkbox" value="${file.path}" onchange="toggleFileSelection(this)"></td>
+                    <td class="${file.is_dir ? 'folder' : ''}" onclick="${file.is_dir ? `fetchFiles('${file.path}')` : ''}">
+                        ${file.is_dir ? '📁' : '📄'} ${file.name}
+                    </td>
+                    <td>${file.size}</td>
+                    <td>${file.modified}</td>
+                    <td contenteditable="true" onblur="saveNote('${file.path}', this.innerText)">${file.notes || ''}</td>
+                `;
+                fileList.appendChild(row);
+            });
+        }
 
-                if (!data.files || !Array.isArray(data.files)) {
-                    throw new Error("Некорректный формат ответа сервера");
-                }
+        function toggleSelectAll(checkbox) {
+            selectedFiles = [];
+            document.querySelectorAll("#file-list input[type='checkbox']").forEach(cb => {
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) selectedFiles.push(cb.value);
+            });
+        }
 
-                const fileList = document.getElementById("file-list");
-                fileList.innerHTML = "";
-
-                data.files.forEach(file => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                        <td><input type="checkbox" value="${file.path}"></td>
-                        <td class="${file.is_dir ? 'folder' : ''}" onclick="${file.is_dir ? `fetchFiles('${file.path}')` : ''}">
-                            ${file.is_dir ? '📁' : '📄'} ${file.name}
-                        </td>
-                        <td>${file.size}</td>
-                        <td>${file.modified}</td>
-                        <td contenteditable="true" onblur="saveNote('${file.path}', this.innerText)">${file.notes || ''}</td>
-                    `;
-                    fileList.appendChild(row);
-                });
-            } catch (error) {
-                console.error("Ошибка загрузки файлов:", error);
-                alert("Не удалось загрузить файлы. Проверьте соединение с сервером.");
+        function toggleFileSelection(checkbox) {
+            if (checkbox.checked) {
+                selectedFiles.push(checkbox.value);
+            } else {
+                selectedFiles = selectedFiles.filter(file => file !== checkbox.value);
             }
         }
 
-        
+        function dragStart(event, filePath) {
+            if (!selectedFiles.includes(filePath)) {
+                selectedFiles = [filePath];
+            }
+            dragIndicator.textContent = `📂 ${selectedFiles.length}`;
+            dragIndicator.style.display = "block";
+            event.dataTransfer.setData("text/plain", JSON.stringify(selectedFiles));
+        }
+
+        function dropFiles(event, targetFolder) {
+            event.preventDefault();
+            dragIndicator.style.display = "none";
+            const filesToMove = JSON.parse(event.dataTransfer.getData("text/plain"));
+            
+            const confirmMove = confirm(`Переместить ${filesToMove.length} файл(а) в ${targetFolder}?`);
+            if (!confirmMove) return;
+
+            fetch("/move", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ files: filesToMove, destination: targetFolder })
+                }).then(() => fetchFiles(currentPath));
+        }
+
         function goUp() {
             if (!currentPath || currentPath === rootPath) return;
-
             const parentPath = currentPath.split("/").slice(0, -1).join("/");
-            fetchFiles(parentPath)
+            fetchFiles(parentPath);
         }
-        
+
         async function downloadFiles() {
             const selectedFiles = Array.from(document.querySelectorAll("input[type='checkbox']:checked"))
                                       .map(cb => cb.value);
@@ -230,8 +284,13 @@
                 .catch(err => console.error('Ошибка выхода:', err));
         }
 
+        document.addEventListener("dragend", () => dragIndicator.style.display = "none");
+        document.addEventListener("dragover", (event) => {
+            dragIndicator.style.left = `${event.pageX+10}px`;
+            dragIndicator.style.top = `${event.pageY+10}px`;
+        });
+
         fetchConfig();
-        //fetchFiles();
     </script>
 </body>
 </html>

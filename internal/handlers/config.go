@@ -9,7 +9,7 @@ import (
 
 func ConfigHandler(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		rootPath := cfg.Storage.UploadDir[2:] + "/"
+		rootPath := cfg.Storage.UploadDir[2:]
 
 		c.JSON(http.StatusOK, gin.H{
 			"rootPath": rootPath,

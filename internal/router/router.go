@@ -35,6 +35,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		authGroup.GET("/download/:filename", handlers.DownloadOnClickHandler(cfg.Storage.UploadDir))
 		authGroup.POST("/save-note", handlers.SaveNoteHandler(cfg.Storage.UploadDir))
 		authGroup.POST("/create-folder", handlers.CreateFolderHandler(cfg.Storage.UploadDir))
+		authGroup.POST("/move-file", handlers.MoveHandler(cfg.Storage.UploadDir))
 	}
 
 	return router
