@@ -9,3 +9,5 @@ FROM alpine:latest
 COPY --from=builder /myapp /myapp
 EXPOSE 8082
 CMD ["/myapp"]
+
+#TRIGER PIPELINE
